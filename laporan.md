@@ -44,16 +44,17 @@ dalam kegiatan ekstrakurikuler, serta hasil akademik mereka. Dengan total 10.000
 untuk membangun model prediktif yang kuat dan dapat diuji secara statistik menggunakan pendekatan machine learning.
 
 ### Variabel-variabel pada Student Performance dataset adalah sebagai berikut:
-- `study_time` : jam belajar per minggu
-- `previous_scores` : rata-rata skor tes sebelumnya
-- `sleep_hours` : jam tidur rata-rata per malam
-- `sample_papers_practiced` : jumlah soal latihan yang dikerjakan
-- `extracurricular_activities` : partisipasi kegiatan ekstrakurikuler; Yes/No
+- `Hours Studied` : Total waktu belajar siswa sebelum tes
+- `Previous Scores` : Nilai tes mahasiswa sebelumnya
+- `Sleep Hours` : Rata-rata jam tidur per hari
+- `Sample Question Papers Practiced` : Jumlah soal latihan yang dikerjakan
+- `Extracurricular Activities` : Partisipasi kegiatan ekstrakurikuler: Yes/No
 
 ### Hasil EDA (*Exploratory Data Analysis*)
 
 Demi memahami dan memvalidasi kondisi & kualitas dataset yang akan digunakan sebelum masuk ke modeling, saya melakukan beberapa tahap eksplorasi
 data:
+
 - **Pengecekan distribusi data:** Masing-masing fitur terdistribusi dengan rata ini termasuk fitur kategorikal dengan perbandingan 49/51, terkecuali
 untuk data `performance_index` yang merupakan target utama. Untuk memastikan hal ini digunakan visualisasi histogram serta piechart khusus fitur kategorikal.
 - **Pengecekan korelasi antar-fitur:** Kebanyakan korelasi fitur tampak lemah dengan fitur target terkecuali untuk dua variabel yaitu `previous_scores` dan
@@ -63,34 +64,30 @@ untuk data `performance_index` yang merupakan target utama. Untuk memastikan hal
 
 Tahapan ini mempersiapkan data agar siap dipakai oleh algoritma regresi. Semua langkah dilakukan berdasarkan karakteristik dataset siswa.
 
-1. **Menghapus Duplikasi**
+1. **Pengecekan & penghapusan data duplikasi**
 
-   - Ditemukan 127 baris duplikat setelah pemeriksaan `df.duplicated().sum()`, seluruh baris tersebut didrop demi mencegah bias pada data yang duplikat
+   - Ditemukan 127 baris duplikat setelah pemeriksaan dengan pemanggilan `df.duplicated().sum()`, seluruh baris tersebut didrop demi mencegah bias pada data yang duplikat dengan pemanggilan `df.drop_duplicates().
 
-2. **Menangani Outlier**
+2. **Pengecekan & penghapusan data null**
 
-   - Metode IQR (interquartile range) diterapkan pada fitur numerik. Tidak ada outlier ekstrem yang terdeteksi (`drop` indeks = 0), sehingga **data dibiarkan utuh**
-     untuk menjaga variabilitas natural.
+   - Tidak ditemukan data null pada dataset namun proses penghapusan null tetap diadakan pada tahap ini dengan pemanggilan `df.dropna()`.
 
-3. **Encoding Fitur Kategorikal**
+3. **Menangani Outlier**
 
-   - Fitur `Extracurricular Activities` (Yes/No) diubah menjadi biner menggunakan `OneHotEncoder(drop='first')`. Menghasilkan kolom `Extracurricular Activities_Yes`
-     dengan nilai 0/1.
+   - Metode IQR (interquartile range) diterapkan pada fitur numerik dan outliers disimpan dalam set `outlier_indices`. Hasilnya tidak ada outlier ekstrem yang terdeteksi, namun outlier tetap didrop dengan menghapus set penyimpanan outliers dengan `df.drop(outlier_indices)`.
 
-4. **Scaling Fitur Numerik**
+4. **Split data menjadi train & test**
 
-   - Fitur numerik (`Hours Studied`, `Previous Scores`, `Sleep Hours`, `Sample Question Papers Practiced`) distandarisasi menggunakan `StandardScaler` (mean=0, std=1).
-   - Scaler *fit* hanya pada data train, lalu *transform* pada train dan test agar tidak terjadi kebocoran data.
+   - Data dibagi menjadi 80% untuk training dan 20% untuk testing menggunakan `train_test_split(random_state=42)`.
+   - Pembagian ini dilakukan dengan tool library sci-kit learn, tujuan split data adalah untuk memastikan evaluasi model pada data yang belum pernah dilihat.
 
-5. **Train-Test Split**
-
-   - Data dibagi menjadi 80% untuk pelatihan dan 20% untuk pengujian menggunakan `train_test_split(random_state=42)`.
-   - Pembagian ini memastikan evaluasi model pada data yang belum pernah dilihat.
-
-6. **Hyperparameter Tuning**
-
-   - Untuk model regresi *Ridge* dan *Lasso*, dilakukan pencarian `alpha` optimal menggunakan `GridSearchCV` 5-fold CV.
-   - `param_grid_ridge = {'reg__alpha':[0.1,1,10,100]}` dan `param_grid_lasso = {'reg__alpha':[0.001,0.01,0.1,1,10]}`.
+5. **Membangun pipeline preprocessor**
+   - **Encoding Fitur Kategorikal:**
+     - Fitur `Extracurricular Activities` (Yes/No) diubah menjadi biner menggunakan `OneHotEncoder()`. Proses ini menghasilkan kolom `Extracurricular Activities_Yes`
+       dengan nilai 0/1. Hal ini perlu dilakukan karena model/ algoritma yang digunakan hanya dapat memproses data numerik.
+   - **Scaling Fitur Numerik**
+     - Fitur numerik (`Hours Studied`, `Previous Scores`, `Sleep Hours`, `Sample Question Papers Practiced`) distandarisasi menggunakan `StandardScaler` scikit-learn.
+       Scaler *fit* hanya dilakukan pada data train, lalu *transform* pada train dan test agar tidak terjadi kebocoran data.
 
 ## Modeling
 
@@ -103,22 +100,21 @@ Model ini menghitung koefisien dari setiap fitur untuk meminimalkan selisih kuad
 
 #### Parameter
 
-Model digunakan dengan pengaturan default dari `sklearn.linear_model.LinearRegression`:
+Model digunakan dengan pengaturan **default** dari `sklearn.linear_model.LinearRegression`, seperti:
 
-* `fit_intercept=True`: menghitung nilai intercept.
-* `normalize='deprecated'`: tidak digunakan karena scaling dilakukan terpisah.
-* `n_jobs=None`: pelatihan dilakukan secara default (single thread).
+- `fit_intercept=True`: menghitung nilai intercept.
+- `n_jobs=None`: pelatihan dilakukan secara default (single thread).
 
 #### Kelebihan
 
-* Sangat cepat dan efisien dalam pelatihan.
-* Mudah diinterpretasi karena setiap koefisien menunjukkan pengaruh linear dari fitur terhadap target.
-* Cocok sebagai baseline untuk regresi.
+- Sangat cepat dan efisien dalam pelatihan.
+- Mudah diinterpretasi karena setiap koefisien menunjukkan pengaruh linear dari fitur terhadap target.
+- Cocok sebagai baseline untuk regresi.
 
 #### Kekurangan
 
-* Tidak memiliki mekanisme regularisasi.
-* Rentan terhadap multikolinearitas dan outlier.
+- Tidak memiliki mekanisme regularisasi.
+- Rentan terhadap multikolinearitas dan outlier.
 
 ### Model 2 : **Ridge Regression**
 
@@ -127,15 +123,20 @@ Model digunakan dengan pengaturan default dari `sklearn.linear_model.LinearRegre
 Ridge Regression adalah versi regularisasi dari Linear Regression yang menambahkan penalti L2 terhadap koefisien. 
 Hal ini membantu mengurangi varians model dan mencegah overfitting, terutama saat terdapat multikolinearitas atau fitur dengan kontribusi serupa.
 
-#### Parameter dan Tuning
+#### Parameter
 
-Model dituning menggunakan `GridSearchCV` untuk mencari nilai terbaik dari hyperparameter `alpha`, yaitu:
+Selain yang disebutkan di bawah ini, parameter dari model ini mengikuti bentuk default:
+
+- `max_iter=5000` : memastikan bahwa solver punya cukup waktu untuk mencapai konvergensi, juga menghindari peringatan `ConvergenceWarning` yang kadang muncul dengan nilai default `max_iter=1000`
+- `alpha=0.1` : koefisien pengali untuk penalti regularisasi (L2 pada Ridge). Parameter `alpha` diambil yang terbaik menggunakan `GridSearchCV()` dari grid seperti pada tahap **tuning** di bawah. Secara default nilai alpha adalah `alpha=1` yang tidak selalu merupakan parameter terbaik.
+
+#### Tuning parameter
+Model dituning menggunakan `GridSearchCV()` untuk mencari nilai terbaik dari hyperparameter `alpha`, dengan grid:
 
 ```python
 param_grid_ridge = {'reg__alpha': [0.1, 1, 10, 100]}
 ```
-
-Pemilihan nilai `alpha` dilakukan menggunakan validasi silang 5-fold dengan metrik `neg_mean_absolute_error`.
+Pemilihan nilai `alpha` dilakukan menggunakan validasi silang 5-fold dengan metrik `neg_mean_absolute_error`. Hasil parameter `alpha` dari tuning secara alur kerja program langsung digunakan dalam training & evaluasi.
 
 #### Kelebihan
 
@@ -155,13 +156,20 @@ Pemilihan nilai `alpha` dilakukan menggunakan validasi silang 5-fold dengan metr
 Lasso Regression menambahkan penalti L1 terhadap fungsi kehilangan, yang secara alami mendorong beberapa koefisien menjadi nol. 
 Hal ini membuat Lasso dapat digunakan sebagai metode seleksi fitur.
 
-#### Parameter dan Tuning
+#### Parameter
 
-Model dituning menggunakan `GridSearchCV` dengan grid:
+Selain yang disebutkan di bawah ini, parameter dari model ini mengikuti bentuk default:
+
+- `max_iter=10000` : memastikan bahwa solver punya cukup waktu untuk mencapai konvergensi, juga menghindari peringatan ConvergenceWarning yang kadang muncul dengan nilai default `max_iter=1000`
+- `alpha=0.001` : koefisien pengali untuk penalti regularisasi (L1 pada Lasso). Parameter `alpha` diambil yang terbaik menggunakan `GridSearchCV()` dari grid seperti pada tahap **tuning** di bawah. Secara default nilai alpha adalah `alpha=1` yang tidak selalu merupakan parameter terbaik.
+
+#### Tuning parameter
+Model dituning menggunakan `GridSearchCV()` untuk mencari nilai terbaik dari hyperparameter `alpha`, dengan grid:
 
 ```python
 param_grid_lasso = {'reg__alpha': [0.001, 0.01, 0.1, 1, 10]}
 ```
+Pemilihan nilai `alpha` dilakukan menggunakan validasi silang 5-fold dengan metrik `neg_mean_absolute_error`. Hasil parameter `alpha` dari tuning secara alur kerja program langsung digunakan dalam training & evaluasi.
 
 #### Kelebihan
 
@@ -172,22 +180,6 @@ param_grid_lasso = {'reg__alpha': [0.001, 0.01, 0.1, 1, 10]}
 
 * Dapat menghilangkan fitur penting secara arbitrer jika fitur berkorelasi.
 * Memerlukan tuning `alpha` yang lebih sensitif dibanding Ridge.
-
----
-
-### Proses Improvement (Hyperparameter Tuning)
-
-Untuk meningkatkan performa Ridge dan Lasso, dilakukan:
-
-* **GridSearchCV (5-fold CV)** pada data training:
-
-  * **Ridge:** `alpha` diuji pada `[0.1, 1, 10, 100]`.
-  * **Lasso:** `alpha` diuji pada `[0.001, 0.01, 0.1, 1, 10]`.
-* **Scoring:** `neg_mean_absolute_error` digunakan untuk memilih parameter yang meminimalkan MAE.
-* Setelah tuning, model terbaik (`best_estimator_`) dievaluasi pada test set.
-
-> Hasil tuning menunjukkan bahwa **Ridge** dengan `alpha = {ridge_alpha}` dan **Lasso** dengan `alpha = {lasso_alpha}`
-memberikan MAE CV masing-masing {ridge\_mae:.3f} dan {lasso\_mae:.3f}.
 
 ## Evaluation
 
@@ -217,17 +209,25 @@ $$
 R^2 = 1 - \frac{\sum_{i=1}^{n} (y_i - \hat y_i)^2}{\sum_{i=1}^{n} (y_i - \bar y)^2}
 $$
 
+#### 3. 5 Fold Cross Validation MAE
+- Cross Validation bekerja dengan membagi data train menjadi beberapa “fold” yang bergantian dipakai untuk validasi.
+- CV MAE adalah skor MAE yang dirata-ratakan dari beberapa iterasi (5 iterasi dalam kasus ini).
+- Tujuan penggunaan metrik ini adalah;
+  - Pengecekan overfitting: di mana skor MAE yang jauh lebih rendah dari skor CV MAE dapat mengindikasikan
+    overfitting akibat "hapal" data train
+  - Perbandingan model secara rata-rata performa
+
 ### Pemilihan Model Terbaik
 
 Berdasarkan hasil evaluasi test set:
 
-| Model             | Test MAE | Test R² |
-| ----------------- | -------: | ------: |
-| Linear Regression |    1.646 |   0.988 |
-| Ridge Regression  |    1.646 |   0.988 |
-| Lasso Regression  |    1.646 |   0.988 |
+| Model             | Test MAE | Test R² | CV MAE |
+| ----------------- | -------- | ------- | -------|
+| Linear Regression | 1.646    | 0.988   | 1.618  |
+| Ridge Regression  | 1.646    | 0.988   | 1.618  |
+| Lasso Regression  | 1.647    | 0.988   | 1.618  |
 
-- **MAE** dan **R²** ketiga model sangat mirip dengan perbandingan yang dapat dibilang insignifikan.
+- **MAE**, **R²**, dan **CV MAE** ketiga model sangat mirip atai bahkan sama persis.
 - Namun, **Ridge Regression** dipilih sebagai model terbaik karena:
 
   1. **Regularisasi L2** memberikan kestabilan koefisien di berbagai subset data.
