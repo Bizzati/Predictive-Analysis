@@ -49,6 +49,15 @@ untuk membangun model prediktif yang kuat dan dapat diuji secara statistik mengg
 - `Sleep Hours` : Rata-rata jam tidur per hari
 - `Sample Question Papers Practiced` : Jumlah soal latihan yang dikerjakan
 - `Extracurricular Activities` : Partisipasi kegiatan ekstrakurikuler: Yes/No
+- `Performance Index` : variabel target, performa siswa secara keseluruhan
+
+### Kondisi Data: 
+Demi memahami dan memvalidasi kondisi dataset untuk persiapan data cleaning, dilakukan pengecekan di beberapa hal berikut dengan penemuan yaitu:
+1. Missing Values: Tidak ditemukan nilai kosong/Null pada seluruh kolom, semua entri telah terisi secara lengkap.
+2. Duplikasi: Ditemukan sejumlah 127 baris duplikat yang memiliki nilai identik pada seluruh kolom, baris duplikasi akan ditangani di tahap data preparation
+3. Outlier: Tidak ditemukan data outlier pada kolom numerik (`Hours Studied`, `Previous Scores`, `Sleep Hours`, `Sample Question Papers Practiced`), distribusi
+            data normal.
+4. Jumlah data: Data awal yang diambil langsung dari sumber memiliki 10000 baris data dengan 6 kolom variabel yang disebutkan di sebelumnya.
 
 ### Hasil EDA (*Exploratory Data Analysis*)
 
@@ -66,7 +75,7 @@ Tahapan ini mempersiapkan data agar siap dipakai oleh algoritma regresi. Semua l
 
 1. **Pengecekan & penghapusan data duplikasi**
 
-   - Ditemukan 127 baris duplikat setelah pemeriksaan dengan pemanggilan `df.duplicated().sum()`, seluruh baris tersebut didrop demi mencegah bias pada data yang duplikat dengan pemanggilan `df.drop_duplicates().
+   - Ditemukan 127 baris duplikat setelah pemeriksaan dengan pemanggilan `df.duplicated().sum()`, seluruh baris tersebut didrop demi mencegah bias pada data yang duplikat dengan pemanggilan `df.drop_duplicates()`.
 
 2. **Pengecekan & penghapusan data null**
 
@@ -75,6 +84,8 @@ Tahapan ini mempersiapkan data agar siap dipakai oleh algoritma regresi. Semua l
 3. **Menangani Outlier**
 
    - Metode IQR (interquartile range) diterapkan pada fitur numerik dan outliers disimpan dalam set `outlier_indices`. Hasilnya tidak ada outlier ekstrem yang terdeteksi, namun outlier tetap didrop dengan menghapus set penyimpanan outliers dengan `df.drop(outlier_indices)`.
+
+> Setelah ketiga tahap data cleaning di atas, data yang bersisa berjumlah 9873
 
 4. **Split data menjadi train & test**
 
